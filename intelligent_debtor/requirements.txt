@@ -140,10 +140,7 @@ keras==2.15.0
 Keras-Preprocessing==1.1.2
 kiwisolver==1.4.4
 kthread==0.2.3
-langchain==0.1.5
-langchain-community==0.0.19
-langchain-core==0.1.21
-langsmith==0.0.87
+
 lazy-object-proxy==1.9.0
 lazy_loader==0.3
 libclang==16.0.0
@@ -259,7 +256,7 @@ SQLAlchemy==2.0.25
 stack-data==0.6.2
 starlette==0.27.0
 statsmodels==0.14.0
-streamlit==1.29.0
+
 taipy==3.0.0
 taipy-config==3.0.0
 taipy-core==3.0.0
