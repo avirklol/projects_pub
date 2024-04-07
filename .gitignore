@@ -3,7 +3,7 @@ api
 
 # Other Files
 installed_packages.txt
-/Users/annandvirk/code/avirklol/projects_pub/text_adventure/annandvirk@gmail.com-token.json
+text_adventure/annandvirk@gmail.com-token.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
