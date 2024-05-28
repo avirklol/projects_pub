@@ -1,25 +1,12 @@
-import streamlit as st
 import os
+import streamlit as st
 from dotenv import load_dotenv
 from langchain_openai import OpenAI
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 
 load_dotenv()
 
-st.title(':rainbow[_Basic LLM_]')
-
-with st.sidebar:
-    openai_api_key = st.text_input('OpenAI API Key', type='password', value=os.getenv("OPENAI_API_KEY"))
-
-
-def generate_response(input):
-    llm = OpenAI(temperature=0.7, openai_api_key=openai_api_key)
-    st.info(llm(input))
-
-
-with st.form('input_form', border=True):
-    input = st.text_area('Your input:', 'Think of something to ask the LLM.')
-    submitted = st.form_submit_button()
-    if not openai_api_key.startswith('sk-'):
-        st.warning('Enter an API key.', icon='🔑')
-    if submitted and openai_api_key.startswith('sk-'):
-        generate_response(input)
+os.environ['OPENAI_API_KEY'] = os.getenv('OPENAI_API_KEY')
+os.environ['LANGCHAIN_TRACING_V2']='true'
+os.environ['LANGCHAIN_API_KEY'] = os.getenv('LANGCHAIN_API_KEY')

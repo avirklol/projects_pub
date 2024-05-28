@@ -5,21 +5,25 @@ from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
 from langchain.memory import CassandraChatMessageHistory, ConversationBufferMemory
 from langchain_openai import OpenAI
-from langchain.prompts import LLMChain, PromptTemplate
+from langchain.prompts import PromptTemplate
+from langchain_community.llms import openllm
+from astrapy import DataAPIClient
 
 load_dotenv()
 
-cloud_config= {
-  'secure_connect_bundle': 'secure-connect-choose-your-own-adventure.zip'
+# Initialize the client
+client = DataAPIClient(os.getenv('ASTRA_DB_APPLICATION_TOKEN'))
+db = client.get_database_by_api_endpoint(os.getenv('ASTRA_DB_API_ENDPOINT'))
+
+print(f"Connected to Astra DB: {db.list_collection_names()}")
+
+cloud_config = {
+    'secure_connect_bundle': 'text_adventure/secure-connect-text-adventure-database.zip'
 }
+auth_provider = PlainTextAuthProvider(username='user', password='pass')
 
-with open("choose_your_own_adventure-token.json") as f:
-    secrets = json.load(f)
-
-CLIENT_ID = secrets["clientId"]
-CLIENT_SECRET = secrets["secret"]
-ASTRA_DB_KEYSPACE = ""
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+cluster = Cluster(cloud=cloud_config, auth_provider=auth_provider)
+session = cluster.connect()
 
 auth_provider = PlainTextAuthProvider(CLIENT_ID, CLIENT_SECRET)
 cluster = Cluster(cloud=cloud_config, auth_provider=auth_provider)
@@ -40,29 +44,16 @@ cass_buff_memory = ConversationBufferMemory(
 )
 
 template = """
-You are now the guide of a mystical journey in the Whispering Woods.
-A traveler named Elara seeks the lost Gem of Serenity.
-You must navigate her through challenges, choices, and consequences,
-dynamically adapting the tale based on the traveler's decisions.
-Your goal is to create a branching narrative experience where each choice
-leads to a new path, ultimately determining Elara's fate.
 
-Here are some rules to follow:
-1. Start by asking the player to choose some kind of weapons that will be used later in the game
-2. Have a few paths that lead to success
-3. Have some paths that lead to death. If the user dies generate a response that explains the death and ends in the text: "The End.", I will search for this text to end the game
-
-Here is the chat history, use this to understand what to say next: {chat_history}
-Human: {human_input}
-AI:"""
+"""
 
 prompt = PromptTemplate(
     input_variables=["chat_history", "human_input"],
     template=template
 )
 
-llm = OpenAI(openai_api_key=OPENAI_API_KEY)
-llm_chain = LLMChain(
+llm = OpenAI(openai_api_key=os.getenv('OPENAI_API_KEY'))
+llm_chain = openllm(
     llm=llm,
     prompt=prompt,
     memory=cass_buff_memory
