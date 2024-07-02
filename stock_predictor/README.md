@@ -1,4 +1,4 @@
-# Stock Options Prediction Model
+# Option Long Call/Put Prediction Model
 ## Defined Objects
 ### Parameters Dictionary
 - defined values for all parameters included in the functions for the batch call
