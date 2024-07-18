@@ -1,4 +1,6 @@
-import bs4
+# Imports
+from bs4 import BeautifulSoup as bs
+import requests
 import langchain
 import langchain_community
 import langchain_core
