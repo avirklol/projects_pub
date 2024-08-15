@@ -9,7 +9,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 class ScraperObjects:
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: dict):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -17,7 +17,7 @@ class ScraperObjects:
         attrs = ',\n'.join(f"{key}={value}" for key, value in self.__dict__.items())
         return f"{self.__class__.__name__}(\n{attrs}\n)"
 
-def post_scrape(driver, posts, post_titles):
+def post_scrape(driver, posts: list, post_titles: list) -> list:
 
     for post in post_titles[len(posts):]:
         post_data = {}
@@ -46,7 +46,7 @@ def scroll_down_page(driver, scroll_pause_time=1, scroll_increment=400):
             break
         last_height = new_height
 
-def run(scraper_object):
+def run(scraper_object) -> list:
 
     # Initialize Chrom WebDriver:
     driver = webdriver.Chrome()
