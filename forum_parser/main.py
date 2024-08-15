@@ -106,6 +106,7 @@ def main():
         if repeated_input_type == 'Click':
             with col2:
                 repeated_click_xpath = st.text_input("Repeated Click Button XPath*", help="The XPath of the button to click repeatedly to load more posts.")
+            paginated = st.checkbox('Paginated',help='Are the posts you\'re trying to scrape on a page that can endlessly load posts or is it paginated?')
 
     if create_object:
         # Create a dictionary with user inputs
@@ -129,6 +130,7 @@ def main():
                 "post_body_class": post_body_class.strip(),
                 "repeated_input_type": repeated_input_type,
                 "repeated_click_xpath": repeated_click_xpath.strip(),
+                "paginated": paginated,
                 "num_posts": num_posts,
                 "num_inputs": num_inputs,
                 "actions": {}
@@ -137,7 +139,7 @@ def main():
                 user_input["actions"][input_name] = input_selector
 
             # Add the scraper_object to the session state:
-            st.session_state.scraper_object = sc.ScraperObjects(**user_input)
+            st.session_state.scraper_object = sc.ScraperObject(**user_input)
 
 
     # Instantiate the scraper object:

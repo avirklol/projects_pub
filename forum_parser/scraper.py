@@ -8,7 +8,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-class ScraperObjects:
+class ScraperObject:
     def __init__(self, **kwargs: dict):
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -18,6 +18,11 @@ class ScraperObjects:
         return f"{self.__class__.__name__}(\n{attrs}\n)"
 
 def post_scrape(driver, posts: list, post_titles: list) -> list:
+
+    # The start of the following [for loop] slices [post_titles] using the length of the [posts] as the starting index, causing the [post_scrape] function to only
+    # pull post body content from new posts loaded on to a page that features endless scrolling.
+
+    # Will need to update this for paginated forums.
 
     for post in post_titles[len(posts):]:
         post_data = {}
