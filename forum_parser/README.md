@@ -22,3 +22,6 @@ A friend at work told me that they were looking through community posts individu
 - Have established a [basic wireframe](https://excalidraw.com/#json=q1TqwTFVsN3N6ECkSrmcq,j0LBYtEevliiVQMi_9qUYQ) detailing the required objects and functions to allow it to be run on virtually any forum.
 ### July 22, 2024
 - Created an object class that can be loaded with n values via a Streamlit form and be passed into a function that executes n amount of clicks/scrapes. Pretty exciting!
+### August 16, 2024
+- Optimized the code to wrap any repeated code in functions that can be called throughout the scraper.py script.
+- Expanded the object class to include a paginated option.

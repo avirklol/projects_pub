@@ -99,6 +99,8 @@ def main():
     with st.expander('Repeated Input'):
 
         col1, col2 = st.columns(2)
+        repeated_click_xpath = None
+        paginated = False
 
         with col1:
             repeated_input_type = st.radio("Repeated Input Type*", ('Click', 'Scroll'), help="The type of input to load more posts.")
@@ -120,7 +122,7 @@ def main():
             st.error("Please select a Repeated Input Type")
         elif repeated_input_type == 'Click' and not repeated_click_xpath:
             st.error("Please enter a Repeated Click Button XPath")
-        elif not all(input_selector for input_name, input_selector in inputs):
+        elif num_inputs > 0 and not all(input_selector for input_name, input_selector in inputs):
             st.error("All initial click selectors are required.")
         else:
             user_input = {
@@ -129,14 +131,15 @@ def main():
                 "avoid_class": avoid_class.strip(),
                 "post_body_class": post_body_class.strip(),
                 "repeated_input_type": repeated_input_type,
-                "repeated_click_xpath": repeated_click_xpath.strip(),
+                "repeated_click_xpath": repeated_click_xpath.strip() if repeated_click_xpath else None,
                 "paginated": paginated,
                 "num_posts": num_posts,
                 "num_inputs": num_inputs,
                 "actions": {}
             }
-            for input_name, input_selector in inputs:
-                user_input["actions"][input_name] = input_selector
+            if num_inputs > 0:
+                for input_name, input_selector in inputs:
+                    user_input["actions"][input_name] = input_selector
 
             # Add the scraper_object to the session state:
             st.session_state.scraper_object = sc.ScraperObject(**user_input)

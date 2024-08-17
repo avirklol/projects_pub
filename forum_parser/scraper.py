@@ -1,6 +1,8 @@
 import re
 import time
 import random
+import os
+import sys
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -48,10 +50,10 @@ def run(scraper_object) -> list:
     avoid_class = scraper_object.avoid_class
 
     # Input Related:
+    actions = scraper_object.actions
     repeated_input_type = scraper_object.repeated_input_type
     repeated_click_xpath = scraper_object.repeated_click_xpath
     paginated = scraper_object.paginated
-    actions = scraper_object.actions
 
     # NESTED FUNCTIONS BEGIN
 
@@ -63,22 +65,27 @@ def run(scraper_object) -> list:
 
         while True:
             # Scroll down by a certain amount
-            driver.execute_script("window.scrollBy(0, arguments[0]);", scroll_increment)
+            try:
+                driver.execute_script("window.scrollBy(0, arguments[0]);", scroll_increment)
 
-            # Wait to load the page
-            time.sleep(scroll_pause_time)
+                # Wait to load the page
+                time.sleep(scroll_pause_time)
 
-            # Calculate new scroll height and compare with last scroll height
-            new_height = driver.execute_script("return document.body.scrollHeight")
-            if new_height == last_height:
-                # If heights are the same, break the loop
-                break
-            last_height = new_height
-    
+                # Calculate new scroll height and compare with last scroll height
+                new_height = driver.execute_script("return document.body.scrollHeight")
+                if new_height == last_height:
+                    # If heights are the same, break the loop
+                    break
+                last_height = new_height
+            except Exception as e:
+                print(f'Error: {e}')
+                os.system('say "Error occured during scrolling."')
+                sys.exit(1)
+
     # Post Title & URL Scrape Function:
     def post_scrape() -> list:
 
-        nonlocal post_titles
+        nonlocal post_titles, posts
 
         if avoid_class != None:
             post_titles = [post for post in driver.find_elements(By.CLASS_NAME, post_title_class) if avoid_class not in post.get_attribute('class')]
@@ -86,7 +93,7 @@ def run(scraper_object) -> list:
             post_titles = [post for post in driver.find_elements(By.CLASS_NAME, post_title_class)]
 
         def scrape(post_titles):
-            
+
             nonlocal posts
 
             for post in post_titles:
@@ -98,29 +105,36 @@ def run(scraper_object) -> list:
                     post_data['title'] = post.find_element(By.TAG_NAME, 'a').text
                 post_data['url'] = post.find_element(By.TAG_NAME, 'a').get_attribute('href')
                 posts.append(post_data)
-                
+
+            return posts
+
         if paginated:
-            scrape(post_titles)
+            posts = scrape(post_titles)
         else:
-            scrape(post_titles[len(posts):])
+            posts = scrape(post_titles[len(posts):])
 
         return posts
-    
+
     # NESTED FUNCTIONS END
 
     # Intial Input Actions:
-    for action_name, action_selector in actions.items():
-        if 'click' in action_name:
-            try:
-                input = wait.until(EC.element_to_be_clickable((By.XPATH, action_selector)))
-                input.click()
-            except Exception as e:
-                print(f'Error: {e}')
-        else:
-            try:
-                input.send_keys(action_selector)
-            except Exception as e:
-                print(f'Error: {e}')
+    if bool(actions):
+        for action_name, action_selector in actions.items():
+            if 'click' in action_name:
+                try:
+                    input = wait.until(EC.element_to_be_clickable((By.XPATH, action_selector)))
+                    input.click()
+                except Exception as e:
+                    print(f'Error: {e}')
+                    os.system('say "Error occured during initial input actions."')
+                    sys.exit(1)
+            else:
+                try:
+                    input.send_keys(action_selector)
+                except Exception as e:
+                    print(f'Error: {e}')
+                    os.system('say "Error occured during initial input actions."')
+                    sys.exit(1)
 
     # Repeated Input and Scraping of Post Titles & URLs:
     while len(posts) < n:
@@ -135,29 +149,24 @@ def run(scraper_object) -> list:
                         input.click()
                 except Exception as e:
                     print(f'Error: {e}')
-
-            # The following block will definitely need work.
+                    os.system('say "Error occured during repeated input actions."')
+                    sys.exit(1)
 
             else:
                 try:
-                    if avoid_class != None:
-                        post_titles = [post for post in driver.find_elements(By.CLASS_NAME, post_title_class) if avoid_class not in post.get_attribute('class')]
-                        posts = post_scrape(posts, post_titles)
-                        if len(posts) >= n:
-                            break
-                        else:
-                            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);") 
+                    posts = post_scrape()
+                    if len(posts) >= n:
+                        break
                     else:
-                        post_titles = [post for post in driver.find_elements(By.CLASS_NAME, post_title_class)]
-                        posts = post_scrape(posts, post_titles)
-                        if len(posts) >= n:
-                            break
-                        else:
-                            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                        scroll_down_page()
                 except Exception as e:
                     print(f'Error: {e}')
+                    os.system('say "Error occured during repeated input actions."')
+                    sys.exit(1)
         except Exception as e:
             print(f'Error: {e}')
+            os.system('say "Error occured during repeated input actions."')
+            sys.exit(1)
 
     # Fetch Post Bodies:
     for post in posts[:n]:
@@ -166,5 +175,8 @@ def run(scraper_object) -> list:
             post['body'] = driver.find_element(By.CLASS_NAME, post_body_class).text
         except Exception as e:
             print(f'Error: {e}')
+            os.system('say "Error occured during post body fetch."')
+            sys.exit(1)
 
+    os.system('say "Scraping complete, ready for L L M filtering."')
     return posts[:n]
