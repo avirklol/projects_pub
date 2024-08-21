@@ -1,5 +1,7 @@
 # Folders
 
+# Debug Stuff
+*.vscode/
 
 # Other Files
 installed_packages.txt
