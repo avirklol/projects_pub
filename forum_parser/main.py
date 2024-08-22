@@ -21,6 +21,16 @@ def main():
     if 'loaded_object' not in st.session_state:
         st.session_state.loaded_object = False
 
+    if 'posts' not in st.session_state:
+        st.session_state.posts = None
+
+    def create_object_callback():
+        st.session_state.view_object = True
+        st.session_state.run_scraper = False
+        if 'uploaded_file' in st.session_state:
+            st.session_state.loaded_object = False
+            del st.session_state['uploaded_file']
+
     def view_object_callback():
         st.session_state.view_object = True
         st.session_state.run_scraper = False
@@ -33,6 +43,7 @@ def main():
     def load_scraper_object(scraper_object):
         if scraper_object is not None:
             st.session_state.scraper_object = pickle.load(scraper_object)
+            st.session_state['uploaded_file'] = uploaded_file
             st.session_state.view_object = True
             st.session_state.loaded_object = True
 
@@ -48,7 +59,7 @@ def main():
         uploaded_file = st.file_uploader("Upload Object", type=["pkl"])
         load_scraper_object(uploaded_file)
         num_inputs = st.number_input("Number of Initial Inputs", min_value=0, step=1, help="The number of initial inputs required to access the posts. (OPTIONAL)")
-        create_object = st.button("Create Object")
+        create_object = st.button("Create Object", on_click=create_object_callback)
 
     # Collect user inputs
 
@@ -128,7 +139,7 @@ def main():
             user_input = {
                 "url": url.strip(),
                 "post_title_class": post_title_class.strip(),
-                "avoid_class": avoid_class.strip(),
+                "avoid_class": None if avoid_class == '' else avoid_class.strip(),
                 "post_body_class": post_body_class.strip(),
                 "repeated_input_type": repeated_input_type,
                 "repeated_click_xpath": repeated_click_xpath.strip() if repeated_click_xpath else None,
@@ -177,6 +188,9 @@ def main():
                 posts = sc.run(scraper_object)
                 st.session_state.posts = posts
                 st.session_state.scrape_done = True
+
+            if st.session_state.posts:
+                posts = st.session_state.posts
 
             if st.session_state.scrape_done:
                 print_posts = st.number_input("Print Posts", min_value=0, max_value=scraper_object.num_posts, step=1, value=0, help="The number of posts to show.")
