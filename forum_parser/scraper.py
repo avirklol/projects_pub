@@ -21,7 +21,7 @@ class ScraperObject:
 
 
 
-def run(scraper_object) -> list:
+def run(scraper_object, num_posts) -> list:
 
     # Initialize Chrom WebDriver:
     driver = webdriver.Chrome()
@@ -42,7 +42,7 @@ def run(scraper_object) -> list:
     posts = []
 
     # Post Amount Target:
-    n = scraper_object.num_posts
+    n = num_posts
 
     # Classes:
     post_title_class = scraper_object.post_title_class
