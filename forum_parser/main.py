@@ -27,6 +27,7 @@ def main():
     def create_object_callback():
         st.session_state.view_object = True
         st.session_state.run_scraper = False
+        # Problematic code in next three lines:
         if 'uploaded_file' in st.session_state:
             st.session_state.loaded_object = False
             del st.session_state['uploaded_file']
@@ -43,6 +44,7 @@ def main():
     def load_scraper_object(scraper_object):
         if scraper_object is not None:
             st.session_state.scraper_object = pickle.load(scraper_object)
+            # Unsure if the following line does anything:
             st.session_state['uploaded_file'] = uploaded_file
             st.session_state.view_object = True
             st.session_state.loaded_object = True
