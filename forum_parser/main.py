@@ -37,7 +37,7 @@ def main():
         st.session_state.run_scraper = False
 
     def run_scraper_callback():
-        st.session_state.view_object = False
+        st.session_state.view_object = True
         st.session_state.run_scraper = True
         st.session_state.scrape_done = False
 
@@ -60,6 +60,7 @@ def main():
 
         uploaded_file = st.file_uploader("Upload Object", type=["pkl"])
         load_scraper_object(uploaded_file)
+        num_posts = st.number_input("Number of Posts", min_value=1, step=1, help="The number of posts to scrape.")
         num_inputs = st.number_input("Number of Initial Inputs", min_value=0, step=1, help="The number of initial inputs required to access the posts. (OPTIONAL)")
         create_object = st.button("Create Object", on_click=create_object_callback)
 
@@ -70,7 +71,6 @@ def main():
         col1, col2 = st.columns(2)
 
         with col1:
-            num_posts = st.number_input("Number of Posts", min_value=1, step=1, help="The number of posts to scrape.")
             post_title_class = st.text_input("Post Title Class*",
                                             help="The class that contains the post title. (REQUIRED)"
                                             )
@@ -146,7 +146,6 @@ def main():
                 "repeated_input_type": repeated_input_type,
                 "repeated_click_xpath": repeated_click_xpath.strip() if repeated_click_xpath else None,
                 "paginated": paginated,
-                "num_posts": num_posts,
                 "num_inputs": num_inputs,
                 "actions": {}
             }
@@ -187,7 +186,7 @@ def main():
                 st.write(scraper_object)
 
             if st.session_state.run_scraper and not st.session_state.scrape_done:
-                posts = sc.run(scraper_object)
+                posts = sc.run(scraper_object, num_posts)
                 st.session_state.posts = posts
                 st.session_state.scrape_done = True
 
@@ -195,7 +194,7 @@ def main():
                 posts = st.session_state.posts
 
             if st.session_state.scrape_done:
-                print_posts = st.number_input("Print Posts", min_value=0, max_value=scraper_object.num_posts, step=1, value=0, help="The number of posts to show.")
+                print_posts = st.number_input("Print Posts", min_value=0, max_value=num_posts, step=1, value=0, help="The number of posts to show.")
                 if print_posts > 0:
                     st.write(posts[:print_posts])
 
