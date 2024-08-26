@@ -3,6 +3,7 @@ import time
 import random
 import os
 import sys
+import tkinter as tk
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -19,7 +20,20 @@ class ScraperObject:
         attrs = ',\n'.join(f"{key}={value}" for key, value in self.__dict__.items())
         return f"{self.__class__.__name__}(\n{attrs}\n)"
 
-
+def show_alert(message, alert_type='info'):
+    root = tk.Tk()
+    root.withdraw()
+    if alert_type != 'info' or alert_type != 'warning' or alert_type != 'error':
+        raise ValueError(f'alert_type must be "info", "warning", or "error"\nCurrent alert_type: {alert_type}')
+    else:
+        root.bell()
+        if alert_type == 'info':
+            tk.messagebox.showinfo('Information', message, type='ok')
+        if alert_type == 'warning':
+            tk.messagebox.showwarning('Warning', message, type='ok')
+        if alert_type == 'error':
+            tk.messagebox.showerror('Error', message, type='ok')
+    root.destroy()
 
 def run(scraper_object, num_posts) -> list:
 
@@ -79,7 +93,7 @@ def run(scraper_object, num_posts) -> list:
                 last_height = new_height
             except Exception as e:
                 print(f'Error: {e}')
-                os.system('say "Error occured during scrolling."')
+                show_alert("Error occured during scrolling.", 'error')
                 sys.exit(1)
 
     # Post Title & URL Scrape Function:
@@ -126,14 +140,14 @@ def run(scraper_object, num_posts) -> list:
                     input.click()
                 except Exception as e:
                     print(f'Error: {e}')
-                    os.system('say "Error occured during initial input actions."')
+                    show_alert("Error occured during initial input actions.", 'error')
                     sys.exit(1)
             else:
                 try:
                     input.send_keys(action_selector)
                 except Exception as e:
                     print(f'Error: {e}')
-                    os.system('say "Error occured during initial input actions."')
+                    show_alert("Error occured during initial input actions.", 'error')
                     sys.exit(1)
 
     # Repeated Input and Scraping of Post Titles & URLs:
@@ -149,7 +163,7 @@ def run(scraper_object, num_posts) -> list:
                         input.click()
                 except Exception as e:
                     print(f'Error: {e}')
-                    os.system('say "Error occured during repeated input actions."')
+                    show_alert("Error occured during repeated input actions.", 'error')
                     sys.exit(1)
 
             else:
@@ -161,11 +175,11 @@ def run(scraper_object, num_posts) -> list:
                         scroll_down_page()
                 except Exception as e:
                     print(f'Error: {e}')
-                    os.system('say "Error occured during repeated input actions."')
+                    show_alert("Error occured during repeated input actions.", 'error')
                     sys.exit(1)
         except Exception as e:
             print(f'Error: {e}')
-            os.system('say "Error occured during repeated input actions."')
+            show_alert("Error occured during repeated input actions.", 'error')
             sys.exit(1)
 
     # Fetch Post Bodies:
@@ -175,8 +189,8 @@ def run(scraper_object, num_posts) -> list:
             post['body'] = driver.find_element(By.CLASS_NAME, post_body_class).text
         except Exception as e:
             print(f'Error: {e}')
-            os.system('say "Error occured during post body fetch."')
+            show_alert("Error occured during post body fetch.", 'error')
             sys.exit(1)
 
-    os.system('say "Scraping complete, ready for L L M filtering."')
+    show_alert("Scraping complete, ready for LLM filtering.", 'info')
     return posts[:n]
