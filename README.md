@@ -4,6 +4,11 @@ All the projects I don't mind sharing.
 ## Current Projects
 A growing list of projects that I'm happy to receive feedback on.
 
+### Personal Website
+**STATUS** [WIP]
+
+A portfolio website that showcases my love for all things AI. Ideally would be able to be utilized as a template for other creators/coders.
+
 ### Option Long Call/Put Prediction Model
 **STATUS:** [BACKLOGGED]
 
