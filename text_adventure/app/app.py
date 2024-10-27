@@ -4,7 +4,7 @@ import json
 import click
 from collections import deque
 from modules import Room, Player, Item
-from modules.ai import room_constructor, dm, settings, enemies, items, challenges
+from modules.ai import room_constructor, dm, settings, enemies, items, challenges, directions
 
 # --------------------------
 # GAME OBJECTS ON LAUNCH
@@ -13,11 +13,22 @@ from modules.ai import room_constructor, dm, settings, enemies, items, challenge
 grid = None # Used to store the grid. Used in the create_map() function.
 grid_size = None # Used to store the size of the grid. Used in the create_grid() function.
 grid_shape = None # Used to store the shape of the grid. Used in the create_map() function.
-setting = random.choice(list(settings.values())) # Randomly select a setting from the settings dictionary. Used in the load_rooms() and modify_rooms() function.
+chosen_setting = random.choice(list(settings.values())) # Randomly select a setting from the settings dictionary. Used in the load_rooms() and modify_rooms() function.
 enemy_group = random.choice(list(enemies.values())) # Randomly select a group of enemies from the enemies dictionary. Used in the load_rooms() function.
 rooms = {} # Used to store and modify the rooms.
-start_x, start_y = None, None
-starting_room = None
+start_x, start_y = None, None # Used to store the starting coordinates. Used in the create_grid() function.
+starting_room = None # Used to store the starting room. Used in the create_map() function.
+
+# LOCKED ROOM CHALLENGE OBJECTS:
+key_room_id = None # Used to store the room id of the room with the key. Used in the create_challenges() function.
+door_room_id = None # Used to store the room id of the room with the door. Used in the create_challenges() function.
+door_room_neighbors_id = None # Used to store the neighbors of the door room. Used in the create_challenges() function.
+door_direction = None # Used to store the direction of the door. Used in the create_challenges() function.
+key_room_data = None # Used to store the data of the key room. Used in the create_challenges() function.
+door_room_data = None # Used to store the data of the door room. Used in the create_challenges() function.
+
+# GAME RESET OPTION:
+reset = False # Used to reset the game. Used in the main() function.
 
 # --------------------------
 # MAP GENERATION FUNCTIONS
@@ -31,15 +42,16 @@ def create_grid():
 
     correct_input = True
     while True:
-        if correct_input:
-            grid_size = input("""Welcome to the MVP of the Text Adventure Game!
-                            \nHow big of a map would like to play on? (Small, Medium, Large)\n
-                            """).lower().strip()
+        if correct_input and not reset:
+            click.echo(click.style("""\n\nWelcome to the MVP of the Text Adventure Game!\n\nHow big of a map would like to play on? (Small, Medium, Large)
+                  """, fg="yellow"))
+            grid_size = input().lower().strip()
         else:
-            grid_size = input("\nSo how big of a map? (Small, Medium, Large)\n").lower().strip()
+            click.echo(click.style("\nSo, how big of a map would you like to play on? (Small, Medium, Large)", fg="yellow"))
+            grid_size = input().lower().strip()
 
         if grid_size == "small":
-            grid_size = random.choice([5, 7])
+            grid_size = random.choice([7])
             break
         if grid_size == "medium":
             grid_size = random.choice([9, 11])
@@ -109,12 +121,10 @@ def load_rooms():
                         neighbor_id = f"room_{nx}_{ny}"
                         exits[direction] = neighbor_id
 
-                enemy_roll = random.randint(1, 6) # Randomly determine if the room will have an enemy.
-
-                if enemy_roll == 6:
-                    ai_room = json.loads(room_constructor("ROOM + ENEMY", setting, random.choice(enemy_group)))
+                if random.randint(1, 6) == 6: # Randomly generate a room with an enemy.
+                    ai_room = json.loads(room_constructor("ROOM + ENEMY", chosen_setting, random.choice(enemy_group)))
                 else:
-                    ai_room = json.loads(room_constructor("ROOM", setting))
+                    ai_room = json.loads(room_constructor("ROOM", chosen_setting))
 
                 room = Room(
                     id=room_id,
@@ -131,12 +141,12 @@ def load_rooms():
 # CHALLENGE GENERATION AND ITEM PLACEMENT:
 def create_challenges(challenge_type:str):
 
-    global rooms
+    global rooms, key_room_id, door_room_id, door_direction, key_room_data, door_room_data
 
     visited = set()  # Set to track visited rooms.
     queue = deque([starting_room])  # Initialize BFS queue with starting room.
     visited.add(starting_room)
-    last_room_id = starting_room
+    last_room_id = None
 
     while queue:
         current_room_id = queue.popleft()  # Get the next room from the queue
@@ -157,26 +167,40 @@ def create_challenges(challenge_type:str):
 
     if challenge_type == "LOCKED ROOM":
 
-        visited.remove(last_room_id)
-        key_room_id = random.choice(list(visited))
-        door_room_id = list(rooms[last_room_id].exits.values())[0]
-        door_direction = None
+        key = Item(random.choice(items['keys']), is_key=True, is_hidden=True, is_usable=True) # Create a key item.
+
+        door_room_id = list(rooms[last_room_id].exits.values())[0] # Get the first neighbor of the last room visited.
+        door_room_neighbors_id = list(rooms[door_room_id].exits.values()) # Get the neighbors of the door room.
+        visited.discard(starting_room)  # Remove the starting room from the visited set.
+        visited.discard(last_room_id) # Remove the last room from the visited set.
+        visited.discard(door_room_id) # Remove the door room from the visited set.
+        for id in door_room_neighbors_id:
+            visited.discard(id) # Remove the neighbors of the door room from the visited set.
+
+        key_room_id = random.choice(list(visited)) # Randomly select a room to place the key in.
+        key.location = key_room_id # Set the location of the key to the key room.
 
         for direction, neighbor_id in rooms[door_room_id].exits.items():
             if neighbor_id == last_room_id:
                 door_direction = direction
 
-        key = Item(random.choice(items['keys']), key=True)
+        key_room_data = json.loads(dm('HIDDEN ITEM', chosen_setting, rooms[key_room_id].description, item=key.name))
+        door_room_data = json.loads(dm('LOCKED ROOM', chosen_setting, rooms[door_room_id].description, direction=door_direction))
 
-        key_room_data = json.loads(dm('HIDDEN ITEM', setting, rooms[key_room_id].description, item=key))
-        door_room_data = json.loads(dm('LOCKED ROOM', setting, rooms[door_room_id].description, direction=door_direction))
+        key.description = key_room_data['item_description'] # Update the description of the key.
+        key.pickup_description = key_room_data['pickup_description'] # Update the pickup description of the key.
+        key.weight = key_room_data['item_weight'] # Update the weight of the key.
+        key.material = key_room_data['item_material'].lower()
+        rooms[last_room_id].locked = True # Lock the last room visited.
+        rooms[last_room_id].end_game = True # Set the last room visited as the end game room.
+        rooms[last_room_id].description = door_room_data['win_description'] # Update the description of the last room visited.
+        rooms[key_room_id].items = [key] # Place the key in the key room.
+        rooms[key_room_id].description = key_room_data['updated_description'] # Update the description of the key room.
+        rooms[key_room_id].new_description = key_room_data['empty_keyroom_description'] # Update the new description of the key room after the player picks up the key.
+        rooms[door_room_id].description = door_room_data['updated_description'] # Update the description of the door room.
+        rooms[door_room_id].unlock_description = door_room_data['unlock_description'] # Update the unlock description of the door room.
+        rooms[door_room_id].new_description = door_room_data['unlocked_description'] # Update the new description of the door room.
 
-        key.description = key_room_data['item_description']
-        rooms[key_room_id].items.append(key)
-        rooms[key_room_id].description = key_room_data['updated_description']
-        rooms[door_room_id].description = door_room_data['updated_description']
-
-        rooms[last_room_id].locked = True
 
         print(f"=====================================\n{rooms[last_room_id].name} has been locked.")
         print(f"=====================================\n{rooms[key_room_id].name} located at {rooms[key_room_id].location} has the key.")
@@ -186,8 +210,12 @@ def create_challenges(challenge_type:str):
 
 def main():
 
+    global reset
+
     # Create grid:
     create_grid()
+
+    reset = False
 
     # Starting positions:
     grid[start_x][start_y] = 1
@@ -204,37 +232,66 @@ def main():
     # Generate challenges:
     create_challenges(random.choice(challenges))
 
-    # Create player
+    # Create player:
     player = Player(rooms[starting_room])
 
-    # Game loop
+    # --------------------------
+    # GAME LOOP
+    # --------------------------
+
     while True:
-        player.status()
-        command = input("\nWhat do you want to do? ").lower().split()
+
+        reset = player.status()
+
+        if reset:
+            main() # Reset the game.
+        else:
+            click.echo(click.style("\nWhat do you want to do?\n", fg="yellow"))
+            command = input().lower().split()
 
         if len(command) == 0:
-            print("Please enter a command (go, take, inventory, quit).")
+            click.echo(click.style("Please enter a command (go, take, search, inventory, quit).", fg="red"))
             continue
 
         if command[0] == "go":
             if len(command) > 1:
+                if command[1] not in directions:
+                    click.echo(click.style("\nGo where?", fg="red"))
                 player.move(command[1], rooms)
             else:
-                print("Go where?")
+                click.echo(click.style("\nGo where?", fg="red"))
+
         elif command[0] == "take":
-            if len(command) > 1 and command[1] in player.current_room.items:
-                player.inventory.append(command[1])
-                player.current_room.items.remove(command[1])
-                print(f"You took the {command[1]}.")
+            if len(command) > 1:
+                player.take(command[1], rooms)
             else:
-                print("Take what?")
+                click.echo(click.style("\nTake what?", fg="red"))
+
         elif command[0] == "inventory":
-            print(f"You are carrying: {', '.join(player.inventory) if player.inventory else 'nothing'}")
+            inventory = json.loads(dm('INVENTORY', chosen_setting, inventory=player.inventory.keys()))["inventory_description"]
+            click.echo(click.style(f"\n{inventory}", fg="yellow"))
+            input("\nContinue?")
+
+        elif command[0] == "search":
+            player.search()
+
+        elif command[0] == "use":
+            item = ""
+            if len(command) > 1:
+                for word in command[1:]:
+                    item += word + " "
+                player.use(item.strip(), rooms)
+            else:
+                click.echo(click.style("\nUse what?", fg="red"))
+
         elif command[0] == "quit":
-            print("Thanks for playing!")
+            click.echo(click.style("\nThanks for playing!", fg="yellow"))
             break
+
         else:
-            print("\nI don't understand that command.")
+            click.echo(click.style("\nI don't understand that command.", fg="red"))
+            click.echo(click.style("\nPlease enter a command (go, take, search, inventory, quit).", fg="red"))
+            input("\nContinue?")
 
 if __name__ == "__main__":
     main()

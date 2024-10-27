@@ -23,14 +23,14 @@ rc_template = [
         You are the ROOM CONSTRUCTOR agent. You will do one of many things:
         1. You will always output JSON according to provided json_schema.
         2. If prompted 'ROOM' you will output a description of a room inside of {setting}.
-        3. If prompted 'ROOM + ENEMY' you will output a description of a room inside of {setting} with the following enemy inside: {enemy}
+        3. If prompted 'ROOM + ENEMY' you will output the following:
+            - a description of a room inside of {setting} with the following enemy inside: {enemy}
+            - the enemy must be included in the room description
         REQUIREMENTS:
         - The room must have a name and description.
         - The room must have an enemy if prompted.
-        - If the room has an enemy, the enemy must be included in the room description.
         - The response cannot resemble a previous response (room names and descriptions must be unique).
         - Enemies may be repeated.
-        - The json_schema must have the following properties: name, description, enemy.
         """
     },
     {
@@ -118,17 +118,28 @@ dm_template = [
         "content": """
         You are the DUNGEON MASTER agent crafting a story with {setting}. You will do one of many things:
         1. You will always output JSON according to provided json_schema.
-        2. If prompted 'LOCKED ROOM' you will append a short description of a locked door situated in the {direction} to the following room details: {description}
-        3. If prompted 'HIDDEN ITEM' you will output the short description of an {item} and append a subtle hint to the following room details: {description}
-        4. If prompted 'INVENTORY' you will output the player's inventory in a short, descriptive manner. Here is the current inventory: {inventory}
+        2. If prompted 'LOCKED ROOM' you will do the following:
+            - output a ~120 CHARACTER description of a locked door situated in the {direction} that will thematically fit the following: {description}
+            - integrate the description of the locked door into the room description and output it as updated_description
+            - create description of the door unlocking and output it as unlock_description
+            - integrate the description of the unlocked door into the room description and output it as unlocked_description
+            - create the description of the area beyond the door, this would be the final area (a successful end to the adventure), and output it as win_description
+        3. If prompted 'HIDDEN ITEM' you will do the following:
+            - output the ~120 CHARACTER description of an {item}
+            - additionally output a SUBTLE hint of a hidden item that would encourage the player to search the area WITHOUT SUGGESTING THAT THEY SEARCH IT AND AVOIDING ADVERBS that thematically fits the following description: {description}
+            - integrate the hint descriptoin into the room description and output it as updated_description
+            - output the item's description as item_description
+            - output the item's weight in lbs as item_weight
+            - output the item's material as item_material
+            - output the item's pickup description as pickup_description
+            - output the room description after the item is picked up as empty_keyroom_description
+        4. If prompted 'INVENTORY' you will output the player's inventory in a SHORT, descriptive manner. Here is the current inventory: {inventory}
         REQUIREMENTS:
         - The JSON must include an updated_description if 'LOCKED ROOM' or 'HIDDEN ITEM' are prompted else None.
         - The JSON must have an item_description if 'HIDDEN ITEM' is prompted else None.
         - The JSON must have an inventory_description if 'INVENTORY' is prompted else None.
-        - The response in updated_description CANNOT replace the provided description in step 2.
-        - The response in updated_description and item_description cannot resemble previous responses.
+        - The response in updated_description, item_discovery_description and item_description cannot resemble previous responses.
         - The response in inventory_description must resemble previous responses.
-        - The json_schema must have the following properties: updated_description, item_description, inventory_description.
         """
     },
     {
@@ -137,7 +148,6 @@ dm_template = [
     }
 ]
 
-# The configuration for the DM agent, updated on each call to dm():
 dm_config = [
     {
         "role": "system",
@@ -149,7 +159,7 @@ dm_config = [
     }
 ]
 
-def dm(prompt:str, setting:str, description:str, direction:str=None, item:str=None, inventory:list=None):
+def dm(prompt:str, setting:str, description:str=None, direction:str=None, item:str=None, inventory:list=None):
 
     # DOCSTRING
     """
@@ -181,15 +191,42 @@ def dm(prompt:str, setting:str, description:str, direction:str=None, item:str=No
                     "type": "object",
                     "properties": {
                         "updated_description": {
-                            "description": "The updated description of the room if prompted 'LOCKED ROOM' or 'HIDDEN ITEM'. None if not prompted.",
+                            "description": "The updated description containing the original description and the appended description of the room if prompted 'LOCKED ROOM' or 'HIDDEN ITEM'. None if not prompted.",
                             "type": ["string", "null"]
                         },
+                        "unlock_description": {
+                            "description": "The description of the door unlocking if prompted 'LOCKED ROOM'. None if not prompted or is None.",
+                            "type": ["string", "null"]
+                        },
+                        "unlocked_description": {
+                            "description": "The description of the room after the door is unlocked if prompted 'LOCKED ROOM'; should be the same as the updated_description except you detail that the door is open. None if not prompted or is None.",
+                            "type": ["string", "null"]
+                        },
+                        "win_description": {
+                            "description": "The description of the area beyond the door if prompted 'LOCKED ROOM'. None if not prompted or is None.",
+                            "type": ["string", "null"]
+                        },
+                        "pickup_description": {
+                            "description": "The description of the item discovery if prompted 'HIDDEN ITEM', this will be shown when the player discovers the item, should align with the updated_description. None if not prompted or is None.",
+                            "type": ["string", "null"]
+                        },
+                        "empty_keyroom_description": {
+                            "description": "The description of the room after the player has picked up the hidden item if prompted 'HIDDEN ITEM'. None if not prompted or is None.",
+                        },
                         "item_description": {
-                            "description": "The description of the item if prompted 'HIDDEN ITEM'. None if not prompted or is None.",
+                            "description": "The description of the item (just the item itself) if prompted 'HIDDEN ITEM'. None if not prompted or is None.",
+                            "type": ["string", "null"]
+                        },
+                        "item_weight": {
+                            "description": "The weight of the item in lbs if prompted 'HIDDEN ITEM'. None if not prompted or is None.",
+                            "type": ["number", "null"]
+                        },
+                        "item_material": {
+                            "description": "The material of the item if prompted 'HIDDEN ITEM'. None if not prompted or is None.",
                             "type": ["string", "null"]
                         },
                         "inventory_description": {
-                            "description": "The player's inventory if prompted 'INVENTORY'. None if not prompted or is None.",
+                            "description": "The player's inventory presented in a curt descriptive manner if prompted 'INVENTORY'. None if not prompted or is None.",
                             "type": ["string", "null"]
                         },
                         "additionalProperties": False
