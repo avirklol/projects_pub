@@ -1,2 +1,2 @@
 from .agents import *
-from .config import *
+from ..objects.config import *

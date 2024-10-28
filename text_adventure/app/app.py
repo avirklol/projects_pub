@@ -3,8 +3,8 @@ import numpy as np
 import json
 import click
 from collections import deque
-from modules import Room, Player, Item
-from modules.ai import room_constructor, dm, settings, enemies, items, challenges, directions
+from modules import Room, Player, Item, settings, enemies, items, challenges, directions
+from modules.ai import room_constructor, dm
 
 # --------------------------
 # GAME OBJECTS ON LAUNCH

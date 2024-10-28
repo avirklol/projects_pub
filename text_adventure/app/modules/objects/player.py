@@ -1,6 +1,6 @@
 import random
 import click
-from modules.ai import locked_room_warning, direction_warning, item_not_found_warning, search_failure_warning, item_not_in_inventory_warning, useless_key_warning, item_not_usable_warning
+from modules import locked_room_warning, direction_warning, item_not_found_warning, search_failure_warning, item_not_in_inventory_warning, useless_key_warning, item_not_usable_warning
 
 class Player:
     def __init__(self, current_room:object):
