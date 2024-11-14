@@ -2,18 +2,37 @@ settings = {
     "victorian_mansion": "a twisted Victorian mansion",
     "ancient_dungeon": "an ancient dungeon",
     "royal_dungeon": "a royal dungeon",
+    "ancient_temple": "an ancient temple",
+    "cursed_forest": "a cursed forest",
+    "haunted_cave": "a haunted cave",
+    "abandoned_castle": "an abandoned castle",
+    "dark_tower": "a dark tower",
+    "lost_city": "a lost city",
+}
+alignments = {
+    "good": ["chaotic good", "neutral good", "lawful good"],
+    "neutral": ["true neutral"],
+    "evil": ["chaotic evil", "neutral evil", "lawful evil"],
 }
 
-enemies = {
-    "lovecraftian": ["cultist", "maniac", "vampire"],
-    "fantasy": ["goblin", "orc", "troll"],
-    "royal": ["guard", "knight", "cane corso"],
-}
+sexes = ["male", "female"]
+
+npc_race = ["human", "dwarf", "elf", "halfling", "gnome", "half-elf", "half-orc", "orc", "troll", "goblin", "dark-elf", "vampire", "werewolf", "centaur", "giant"]
+
+npc_class = ["warrior", "mage", "rogue", "cleric", "ranger", "paladin", "bard", "druid", "sorcerer", "monk", "barbarian", "fighter", "wizard", "thief", "assassin", "necromancer", "illusionist", "enchanter", "conjurer", "summoner", "elementalist"]
+
+npc_roles = ["merchant", "ally", "enemy"]
 
 items = {
     "keys": ["brass key", "silver key", "gold key"],
     "weapons": ["dagger", "sword", "axe"],
     "potions": ["health potion", "mana potion", "strength potion"],
+}
+
+item_conditions = {
+    "keys": ["rusty", "old", "new"],
+    "weapons": ["rusty", "old", "new"],
+    "potions": ["half-full", "full", "empty"],
 }
 
 challenges = ["LOCKED ROOM"]

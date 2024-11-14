@@ -1,10 +1,12 @@
 import random
 import click
+import secrets
 
 class Item:
-    def __init__(self, name:str, description:str=None, pickup_descripton:str=None, weight:float=None, material:str=None, value:float=None, rarity:str=None, condition:str=None,
+    def __init__(self, id:str, name:str, description:str=None, pickup_descripton:str=None, weight:float=None, material:str=None, value:float=None, rarity:str=None, condition:str=None,
                  is_collectible:bool=True, is_hidden:bool=False, is_key:bool=False, is_usable:bool=False, use_effect:dict=None, is_equippable:bool=False, is_consumable:bool=False,
                  durability:int=None, modifiers:dict=None, location:str=None, owner:str=None, unique_id:str=None, history:list=None):
+        self.id = id + "_" + secrets.token_hex(4)
         self.name = name
         self.description = description
         self.pickup_description = pickup_descripton

@@ -1,6 +1,6 @@
 import random
 import click
-from modules import locked_room_warning, direction_warning, item_not_found_warning, search_failure_warning, item_not_in_inventory_warning, useless_key_warning, item_not_usable_warning
+from .config import locked_room_warning, direction_warning, item_not_found_warning, search_failure_warning, item_not_in_inventory_warning, useless_key_warning, item_not_usable_warning
 
 class Player:
     def __init__(self, current_room:object):
@@ -36,10 +36,12 @@ class Player:
             click.echo(click.style(f"\nENEMY: {self.current_room.enemy}", fg="red"))
 
         if self.current_room.items:
-            if len(self.current_room.items) == 1 and self.current_room.items[0].is_hidden:
-                pass
-            else:
-                click.echo(click.style(f"\nITEMS: {', '.join(item.name for item in self.current_room.items if not item.is_hidden)}", fg="yellow"))
+            if len(self.current_room.items) >= 1:
+                items = [item for item in self.current_room.items if not item.is_hidden]
+                if items:
+                    click.echo(click.style(f"\nITEMS: {', '.join(item.name for item in items)}", fg="yellow"))
+                else:
+                    pass
 
         print(f"\nEXITS: {', '.join(self.current_room.exits.keys())}")
 
@@ -82,12 +84,14 @@ class Player:
     def use(self, item, rooms):
         if item not in self.inventory.keys():
             click.echo(click.style(f"\n{random.choice(item_not_in_inventory_warning)}", fg="red"))
+            input("\nContinue?")
             return
 
         item = self.inventory[item]
 
         if not item.is_usable:
             click.echo(click.style(f"\n{random.choice(item_not_usable_warning)}", fg="red"))
+            input("\nContinue?")
             return
 
         if item.is_usable and not item.is_key:
@@ -98,7 +102,7 @@ class Player:
             for room_id in self.current_room.exits.values():
                 if rooms[room_id].locked:
                     rooms[room_id].locked = False
-                    click.echo(click.style(f"\n{self.current_room.unlock_description}", fg="green"))
+                    click.echo(click.style(f"\n{self.current_room.locked_door_data['unlock_description']}", fg="green"))
                     self.current_room.description = self.current_room.new_description
                     input("\nContinue?")
                     return

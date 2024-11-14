@@ -1,6 +1,8 @@
 import os
 import math
 import time
+from turtle import update
+from matplotlib import rc
 import tiktoken
 import sys
 import click
@@ -16,28 +18,60 @@ client = OpenAI()
 # --------------------------
 
 # The template for the Room Constructor agent:
-rc_template = [
-    {
-        "role": "system",
-        "content": """
-        You are the ROOM CONSTRUCTOR agent. You will do one of many things:
+rc_settings = {
+    "SYSTEM": """
+    You are the ROOM CONSTRUCTOR agent. You will do one of many things:
         1. You will always output JSON according to provided json_schema.
-        2. If prompted 'ROOM' you will output a description of a room inside of {setting}.
-        3. If prompted 'ROOM + ENEMY' you will output the following:
-            - a description of a room inside of {setting} with the following enemy inside: {enemy}
-            - the enemy must be included in the room description
-        REQUIREMENTS:
-        - The room must have a name and description.
-        - The room must have an enemy if prompted.
-        - The response cannot resemble a previous response (room names and descriptions must be unique).
-        - Enemies may be repeated.
-        """
-    },
-    {
-        "role": "user",
-        "content": "{prompt}"
+        2. {config}
+    """,
+    "ROOM": {
+        "instructions":"""
+        If prompted 'ROOM' you will output a description of a room inside of {setting}:
+            - output a name for the room to room_name
+            - output a description of the room to room_description
+            - ensure that all rooms are unique and do not resemble previous responses
+        """,
+        "outputs": {
+            "room_name": {
+                "description": "The name of the room in respect to the setting.",
+                "type": "string"
+            },
+            "room_description": {
+                "description": "A description of the room at around 140 characters.",
+                "type": "string"
+            }
+        }
+        },
+    "ROOM + ENEMY": {
+        "instructions":"""
+        If prompted 'ROOM + ENEMY' you will output the following:
+            - a description of a room inside of {setting} with the following kind of enemy inside: {npc_race}
+            - consider the enemy's sex: {npc_sex}
+            - consider the enemy's alignment: {npc_alignment}
+            - consider the enemy's class: {npc_class}
+            - consider the enemy's description: {npc_description}
+            - the enemy must be incorporated into the room description
+            - output the description of the dead enemy to npc_dead_description
+            - output the description of the room to room_description
+            - output the name of the room to room_name
+            - ensure that all rooms are unique and do not resemble previous responses
+        """,
+        "outputs": {
+            "room_name": {
+                "description": "The name of the room in respect to the setting.",
+                "type": "string"
+            },
+            "room_description": {
+                "description": "A description of the room at around 140 characters, incorporating the description of an enemey present in the room if prompted 'ROOM + ENEMY'.",
+                "type": "string"
+            },
+            "npc_dead_description": {
+                "description": "A description of the dead enemy if prompted 'ROOM + ENEMY'.",
+                "type": "string"
+            },
+        }
     }
-]
+}
 
 # The configuration for the Room Constructor agent, updated on each call to room_constructor():
 rc_config=[
@@ -51,13 +85,12 @@ rc_config=[
     }
 ]
 
-def room_constructor(prompt:str, setting:str, enemy:str=None):
+def room_constructor(prompt:str, setting:str, npc:object=None):
 
-    # DOCSTRING
     """
     An agent that will construct a room based on a setting and include an enemy if prompted.
 
-    Args:
+    ARGUMENTS:
         prompt (str): Either 'ROOM' or 'ROOM + ENEMY'.
         setting (str): The setting of the room; what kind of location it is.Passed from the settings dictionary in modeuls.ai.config.
         enemy (str, optional): The enemy that should be present in the room. Defaults to None.
@@ -65,9 +98,26 @@ def room_constructor(prompt:str, setting:str, enemy:str=None):
 
     global rc_config
 
+    prompt_params = {
+        "ROOM": {
+            "setting": setting
+        },
+        "ROOM + ENEMY": {
+            "setting": setting,
+            "npc_race": npc.race if npc else None,
+            "npc_sex": npc.sex if npc else None,
+            "npc_alignment": npc.alignment if npc else None,
+            "npc_class": npc.class_ if npc else None,
+            "npc_description": npc.description if npc else None,
+
+        },
+    }
+
     # Update the configuration with the formatted instructions and prompt while keeping the prevuous room data.
-    rc_config[0]['content'] = rc_template[0]['content'].format(setting=setting, enemy=enemy)
-    rc_config[-1]['content'] = rc_template[-1]['content'].format(prompt=prompt)
+    if prompt in prompt_params.keys():
+        rc_config[0]['content'] = rc_settings['SYSTEM'].format(config=rc_settings[prompt]['instructions'].format(**prompt_params[prompt]))
+
+    rc_config[-1]['content'] = prompt
 
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -75,31 +125,18 @@ def room_constructor(prompt:str, setting:str, enemy:str=None):
         response_format={
             "type": "json_schema",
             "json_schema": {
-                "name": "room",
-                "description": "A room in a text adventure game.",
+                "name": "rc_output",
+                "description": "The output of the room constructor.",
                 "schema": {
                     "type": "object",
-                    "properties": {
-                        "name": {
-                            "description": "The name of the room in respect to the setting.",
-                            "type": "string"
-                        },
-                        "description": {
-                            "description": "A description of the room at around 140 characters, including an enemy if 'ENEMY' is in prompt.",
-                            "type": "string"
-                        },
-                        "enemy": {
-                            "description": "The enemy passed in the instructions if ENEMY is mentioned in the prompt. None if ENEMY is not mentioned or is None.",
-                            "type": ["string", "null"]
-                        },
+                    "properties": rc_settings[prompt]['outputs'],
                         "additionalProperties": False
                     }
                 }
             }
-        }
     )
 
-    rc_config.insert(1, {"role": "system", "content": "PREVIOUS ROOM: " + f"{response.choices[0].message.content}"})
+    rc_config.insert(1, {"role": "system", "content": f"PREVIOUS {prompt}: " + f"{response.choices[0].message.content}"})
 
     return response.choices[0].message.content
 
@@ -111,43 +148,152 @@ def room_constructor(prompt:str, setting:str, enemy:str=None):
 # DM AGENT
 # --------------------------
 
-# The template for the DM agent:
-dm_template = [
-    {
-        "role": "system",
-        "content": """
-        You are the DUNGEON MASTER agent crafting a story with {setting}. You will do one of many things:
+# The settings for the DM agent:
+dm_settings = {
+    "SYSTEM": """
+    You are the DUNGEON MASTER agent crafting a story with {setting}. You will do many things:
         1. You will always output JSON according to provided json_schema.
-        2. If prompted 'LOCKED ROOM' you will do the following:
-            - output a ~120 CHARACTER description of a locked door situated in the {direction} that will thematically fit the following: {description}
+        2. You will adopt the following alignment and apply it where necessary: {dm_alignment}
+        2. {config}
+    """,
+    "LOCKED ROOM": {
+        "instructions":"""
+        If prompted 'LOCKED ROOM' you will do the following:
+            - a ~120 CHARACTER description of a locked door situated in the {direction} that will thematically fit the following room description: {description}
+            - a description of the door to door_description
             - integrate the description of the locked door into the room description and output it as updated_description
-            - create description of the door unlocking and output it as unlock_description
+            - create a description of the door unlocking and output it as unlock_description
             - integrate the description of the unlocked door into the room description and output it as unlocked_description
-            - create the description of the area beyond the door, this would be the final area (a successful end to the adventure), and output it as win_description
-        3. If prompted 'HIDDEN ITEM' you will do the following:
-            - output the ~120 CHARACTER description of an {item}
-            - additionally output a SUBTLE hint of a hidden item that would encourage the player to search the area WITHOUT SUGGESTING THAT THEY SEARCH IT AND AVOIDING ADVERBS that thematically fits the following description: {description}
-            - integrate the hint descriptoin into the room description and output it as updated_description
+            - create the description of the area beyond the door, this would be the final area (a successful end to the adventure) where you detail the end of the journey and output it as win_description
+            - outputs must be unique and not resemble previous responses
+        """,
+        "outputs": {
+            "updated_description": {
+                "description": "The updated description containing the original description and the appended description of the room if prompted 'LOCKED ROOM'.",
+                "type": "string"
+            },
+            "door_description": {
+                "description": "The description of the door if prompted 'LOCKED ROOM'.",
+                "type": "string"
+            },
+            "unlock_description": {
+                "description": "The description of the door unlocking if prompted 'LOCKED ROOM'.",
+                "type": "string"
+            },
+            "unlocked_description": {
+                "description": "The description of the room after the door is unlocked if prompted 'LOCKED ROOM'; should be the same as the updated_description except you detail that the door is open.",
+                "type": "string"
+            },
+            "win_description": {
+                "description": "The description of the area beyond the door if prompted 'LOCKED ROOM'.",
+                "type": "string"
+            }
+        },
+    },
+    "HIDDEN ITEM":{
+        "instructions":"""
+        If prompted 'HIDDEN ITEM' you will do the following:
+            - a ~120 CHARACTER description of the following item: {item}
+            - a VERY SUBTLE hint of a hidden item that would encourage the player to search the area that thematically fits the following room description: {description}
+            - DO NOT SUGGEST THAT THEY SEARCH IT OR HINT AT A MYSTERY, AND AVOID ADVERBS LIKE "SUSPICIOUSLY" OR "MYSTERIOUSLY"
+            - AVOID USING TERMS LIKE "HIDDEN" OR "SECRET" OR "SOMETHING SEEMS..."
+            - DESCRIBE THE ROOM AND AN ELEMENT OF IT IN A WAY THAT HINTS AT MYSTERY WITHOUT SUGGESTING A MYSTERY
+            - integrate the hint description into the description and output it as updated_description
             - output the item's description as item_description
             - output the item's weight in lbs as item_weight
             - output the item's material as item_material
             - output the item's pickup description as pickup_description
             - output the room description after the item is picked up as empty_keyroom_description
-        4. If prompted 'INVENTORY' you will output the player's inventory in a SHORT, descriptive manner. Here is the current inventory: {inventory}
-        REQUIREMENTS:
-        - The JSON must include an updated_description if 'LOCKED ROOM' or 'HIDDEN ITEM' are prompted else None.
-        - The JSON must have an item_description if 'HIDDEN ITEM' is prompted else None.
-        - The JSON must have an inventory_description if 'INVENTORY' is prompted else None.
-        - The response in updated_description, item_discovery_description and item_description cannot resemble previous responses.
-        - The response in inventory_description must resemble previous responses.
-        """
+            - outputs for updated_description, pickup_description, and item_description must be unique and not resemble previous responses
+        """,
+        "outputs": {
+            "updated_description": {
+                "description": "The updated description containing the original description and the appended description of the room if prompted 'HIDDEN ITEM'.",
+                "type": "string"
+            },
+            "item_description": {
+                "description": "The description of the item (just the item itself) if prompted 'HIDDEN ITEM'.",
+                "type": "string"
+            },
+            "item_weight": {
+                "description": "The weight of the item in lbs if prompted 'HIDDEN ITEM'.",
+                "type": "number"
+            },
+            "item_material": {
+                "description": "The material of the item if prompted 'HIDDEN ITEM'.",
+                "type": "string"
+            },
+            "pickup_description": {
+                "description": "The description of the item discovery if prompted 'HIDDEN ITEM', this will be shown when the player discovers the item, should align with the updated_description.",
+                "type": "string"
+            },
+            "empty_keyroom_description": {
+                "description": "The description of the room after the player has picked up the hidden item if prompted 'HIDDEN ITEM'.",
+                "type": "string"
+            }
+        }
     },
-    {
-        "role": "user",
-        "content": "{prompt}"
-    }
-]
+    "NPC": {
+        "instructions":"""
+        If prompted 'NPC' you will do the following:
+            - consider the NPC's sex: {npc_sex}
+            - consider the NPC's race: {npc_race}
+            - consider the NPC's alignment: {npc_alignment}
+            - consider the NPC's role: {npc_role}
+            - consider the NPC's class: {npc_class}
+            - output a first name for the NPC to npc_name that fits their race unrelated to any existing characters in other lore
+            - output a ~180 CHARACTER description of the NPC to npc_description that fits the setting, incorporating their race, alignment, role and class in a more abstract manner; avoid repeating words, terms and explicitly mentioning their alignment and role
+            - output a single archetype for the NPC to npc_archetype that fits their class, role and alignment
+            - output an array of no more than 5 succinct traits for the NPC to npc_traits that fits their race, alignment, class and role
+            - output an array of no more than 5 dialogue examples for the NPC to npc_dialogue that fits the setting, alignment, race, and role
+            - outputs must be unique and not resemble previous responses
+        """,
+        "outputs": {
+            "npc_name": {
+                "description": "The name of the NPC if prompted 'NPC'.",
+                "type": "string"
+            },
+            "npc_description": {
+                "description": "The ~120 CHARACTER description of the NPC if prompted 'NPC'.",
+                "type": "string"
+            },
+            "npc_archetype": {
+                "description": "A single archetype for the NPC if prompted 'NPC'.",
+                "type": "string"
+            },
+            "npc_traits": {
+                "description": "An array of no more than 5 succinct traits for the NPC if prompted 'NPC'.",
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "npc_dialogue": {
+                "description": "An array of no more than 5 dialogue succinct examples for the NPC if prompted 'NPC'.",
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "INVENTORY": {
+        "instructions":"""
+        If prompted 'INVENTORY' you will do the following:
+            - consider the player's inventory: {inventory}
+            - output the inventory in a SHORT, descriptive manner to inventory_description
+            - outputs must resemble previous responses
+        """,
+        "outputs": {
+            "inventory_description": {
+                "description": "The player's inventory presented in a curt descriptive manner if prompted 'INVENTORY'.",
+                "type": "string"
+            },
+        }
+    },
+}
 
+# Cofiguration for the DM agent, updated on each call to dm():
 dm_config = [
     {
         "role": "system",
@@ -159,25 +305,49 @@ dm_config = [
     }
 ]
 
-def dm(prompt:str, setting:str, description:str=None, direction:str=None, item:str=None, inventory:list=None):
+def dm(dm_alignment:str, prompt:str, setting:str, description:str=None, direction:str=None, item:str=None, inventory:list=None, npc:dict=None):
 
-    # DOCSTRING
     """
     An agent that will update a room description based on a prompt.
 
-    Args:
-        prompt (str): Either 'LOCKED ROOM', 'HIDDEN ITEM', or 'INVENTORY'.
-        setting (str): The setting of the room; what kind of location it is. Passed from the settings dictionary in modeuls.ai.config.
-        direction (str): The direction of the locked door in the room.
-        description (str): The description of the room.
+    ARGUMENTS:
+        dm_alignment (str): The alignment of the dungeon master. Passed from the alignments dictionary in modules.objects.config.
+        prompt (str): Either 'LOCKED ROOM', 'HIDDEN ITEM', 'INVENTORY', or 'NPC'.
+        setting (str): The setting of the room; what kind of location it is. Passed from the settings dictionary in modules.objects.config.
+        description (str, optional): The description of the room.
+        direction (str, optional): The direction of the locked door in the room.
         item (str, optional): The item that is hidden in the room. Defaults to None.
-        inventory (str, optional): The player's inventory. Defaults to None.
+        inventory (list, optional): The player's inventory. Defaults to None.
+        npc (dict, optional): The NPC that is in the room. Defaults to None.
     """
 
     global dm_config
 
-    dm_config[0]['content'] = dm_template[0]['content'].format(setting=setting, direction=direction, description=description, item=item, inventory=inventory)
-    dm_config[-1]['content'] = dm_template[-1]['content'].format(prompt=prompt)
+    prompt_params = {
+        'LOCKED ROOM': {
+            'direction': direction,
+            'description': description
+        },
+        'HIDDEN ITEM': {
+            'description': description,
+            'item': item
+        },
+        'INVENTORY': {
+            'inventory': inventory
+        },
+        'NPC': {
+            'npc_sex': npc['sex'] if npc else None,
+            'npc_role': npc['role'] if npc else None,
+            'npc_race': npc['race'] if npc else None,
+            'npc_alignment': npc['alignment'] if npc else None,
+            'npc_class': npc['class'] if npc else None,
+        },
+    }
+
+    if prompt in prompt_params.keys():
+        dm_config[0]['content'] = dm_settings['SYSTEM'].format(dm_alignment=dm_alignment, setting=setting, config=dm_settings[prompt]['instructions']).format(**prompt_params[prompt])
+
+    dm_config[-1]['content'] = prompt
 
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -189,51 +359,11 @@ def dm(prompt:str, setting:str, description:str=None, direction:str=None, item:s
                 "description": "The output of the dungeon master.",
                 "schema": {
                     "type": "object",
-                    "properties": {
-                        "updated_description": {
-                            "description": "The updated description containing the original description and the appended description of the room if prompted 'LOCKED ROOM' or 'HIDDEN ITEM'. None if not prompted.",
-                            "type": ["string", "null"]
-                        },
-                        "unlock_description": {
-                            "description": "The description of the door unlocking if prompted 'LOCKED ROOM'. None if not prompted or is None.",
-                            "type": ["string", "null"]
-                        },
-                        "unlocked_description": {
-                            "description": "The description of the room after the door is unlocked if prompted 'LOCKED ROOM'; should be the same as the updated_description except you detail that the door is open. None if not prompted or is None.",
-                            "type": ["string", "null"]
-                        },
-                        "win_description": {
-                            "description": "The description of the area beyond the door if prompted 'LOCKED ROOM'. None if not prompted or is None.",
-                            "type": ["string", "null"]
-                        },
-                        "pickup_description": {
-                            "description": "The description of the item discovery if prompted 'HIDDEN ITEM', this will be shown when the player discovers the item, should align with the updated_description. None if not prompted or is None.",
-                            "type": ["string", "null"]
-                        },
-                        "empty_keyroom_description": {
-                            "description": "The description of the room after the player has picked up the hidden item if prompted 'HIDDEN ITEM'. None if not prompted or is None.",
-                        },
-                        "item_description": {
-                            "description": "The description of the item (just the item itself) if prompted 'HIDDEN ITEM'. None if not prompted or is None.",
-                            "type": ["string", "null"]
-                        },
-                        "item_weight": {
-                            "description": "The weight of the item in lbs if prompted 'HIDDEN ITEM'. None if not prompted or is None.",
-                            "type": ["number", "null"]
-                        },
-                        "item_material": {
-                            "description": "The material of the item if prompted 'HIDDEN ITEM'. None if not prompted or is None.",
-                            "type": ["string", "null"]
-                        },
-                        "inventory_description": {
-                            "description": "The player's inventory presented in a curt descriptive manner if prompted 'INVENTORY'. None if not prompted or is None.",
-                            "type": ["string", "null"]
-                        },
+                    "properties": dm_settings[prompt]['outputs'],
                         "additionalProperties": False
                     }
                 }
             }
-        }
     )
 
     dm_config.insert(1, {"role": "system", "content": f"PREVIOUS {prompt}: " + f"{response.choices[0].message.content}"})
@@ -245,10 +375,35 @@ def dm(prompt:str, setting:str, description:str=None, direction:str=None, item:s
 # --------------------------
 
 # --------------------------
+# NPC GENERATOR AGENT
+# --------------------------
+
+npc_template = [
+    {
+        "role": "system",
+        "content": """
+        You are the NPC agent. You will do one of many things:
+        1. You will always output JSON according to provided json_schema.
+        2. If prompted 'NPC' you will output a description of an NPC inside of {setting}.
+        """
+    }
+]
+
+npc_config = [
+    {
+        "role": "system",
+        "content": None
+    },
+    {
+        "role": "user",
+        "content": None
+    }
+]
+# --------------------------
 # INPUT AGENT
 # --------------------------
 
-i_template = [
+input_template = [
     {
         "role": "system",
         "content": """
@@ -267,7 +422,7 @@ i_template = [
     }
 ]
 
-i_config = [
+input_config = [
     {
         "role": "system",
         "content": None
@@ -277,3 +432,7 @@ i_config = [
         "content": None
     }
 ]
+
+# --------------------------
+# END INPUT AGENT
+# --------------------------
