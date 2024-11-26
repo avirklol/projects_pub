@@ -20,20 +20,24 @@ from modules.ai import room_constructor, dm
 # GAME OBJECTS ON LAUNCH
 # --------------------------
 
-# THEMATIC SETTINGS:
+# GAME SETTINGS:
 chosen_setting = random.choice(list(settings.values())) # Randomly select a setting from the settings dictionary. Used in load_rooms().
 dm_alignment = random.choice(list(alignments.values())) # Randomly select an alignment from the alignments dictionary. Used in create_challenges().
+challenge = random.choices(challenges) # Randomly select two challenges from the challenges dictionary. Used in create_challenges().
 
 # NPC OBJECTS:
 enemy = None # Used to store the enemy object. Set in load_rooms().
 
-
+# MAP OBJECTS:
 grid = None # Used to store the grid. Used in create_map().
 grid_size = None # Used to store the size of the grid. Used in create_grid().
 grid_shape = None # Used to store the shape of the grid. Used in create_map().
 rooms = {} # Used to store and modify the rooms.
 start_x, start_y = None, None # Used to store the starting coordinates. Used in create_grid().
 starting_room = None # Used to store the starting room. Set in create_grid(), used in create_challenges().
+
+# ALL CHALLENGE OBJECTS:
+last_room_id = None # Used to store the last room visited. Used in create_challenges().
 
 # LOCKED ROOM CHALLENGE OBJECTS:
 key_room_id = None # Used to store the room id of the room with the key. Used in create_challenges().
@@ -162,14 +166,14 @@ def load_rooms():
                         "role": "enemy",
                         "race": random.choice(npc_race),
                         'alignment': random.choice(alignments['evil']),
-                        'class': random.choice(npc_class),
+                        'class_': random.choice(npc_class),
                     }
 
                     ai_enemy = json.loads(dm(dm_alignment, "NPC", chosen_setting, npc=enemy_details))
 
-                    enemy = NPC(enemy_details['role'], enemy_details['sex'], enemy_details['race'], enemy_details['alignment'], enemy_details['class'], ai_enemy['npc_name'], ai_enemy['npc_description'], dialogue=ai_enemy['npc_dialogue'])
+                    enemy = NPC(**(enemy_details | ai_enemy), is_hostile=True)
 
-                    ai_room = json.loads(room_constructor("ROOM + ENEMY", chosen_setting, enemy))
+                    ai_room = json.loads(room_constructor("ROOM + NPC", chosen_setting, enemy))
 
                     enemy.dead_description = ai_room['npc_dead_description']
                 else:
@@ -205,12 +209,11 @@ def create_challenges(challenge_type:str):
         challenge_type (str): The type of challenge to create. Typically passed as a random choice from the challenges list imported from modules.
     """
 
-    global rooms, key_room_id, door_room_id, door_direction, key_room_data, door_room_data
+    global rooms, key_room_id, door_room_id, last_room_id, door_direction, key_room_data, door_room_data
 
     visited = set()  # Set to track visited rooms.
     queue = deque([starting_room])  # Initialize BFS queue with starting room.
     visited.add(starting_room)
-    last_room_id = None
 
     while queue:
         current_room = rooms[queue.popleft()]  # Get the next room object from the rooms dictionary.
@@ -290,11 +293,21 @@ def create_challenges(challenge_type:str):
 
 def generate_random_map():
 
-        create_grid()
-        create_map(start_x, start_y)
-        print_map() # Print the map. Comment out to disable visualization.
-        load_rooms()
-        create_challenges(random.choice(challenges))
+    """
+    Generates a random map for a text adventure game.
+
+    FUNCTIONS:
+        create_grid(): Creates the grid for the map.
+        create_map(x, y): Creates the map using a recursive backtracking algorithm.
+        print_map(): Prints the map as a visualization.
+        load_rooms(): Loads rooms into the rooms dictionary.
+        create_challenges(challenge_type:str): Creates a challenge based on the passed challenge_type argument.
+    """
+    create_grid()
+    create_map(start_x, start_y)
+    print_map() # Print the map. Comment out to disable visualization.
+    load_rooms()
+    create_challenges(challenge)
 
 # --------------------------
 # END OF RANDOM MAP GENERATION FUNCTIONS

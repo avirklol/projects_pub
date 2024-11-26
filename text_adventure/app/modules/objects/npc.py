@@ -4,13 +4,17 @@ import secrets
 from modules.ai import client
 
 class NPC:
-    def __init__(self, role:str=None, sex:str=None, race:str=None, alignment:str=None, class_:str=None, name:str=None, description:str=None, dead_description:str=None, current_room:object=None, inventory:list=None, is_alive:bool=True, is_defeated:bool=False, is_hostile:bool=False, is_merchant:bool=False, is_ally:bool=False, is_quest_giver:bool=False, is_hidden:bool=False,
+    def __init__(self, role:str=None, sex:str=None, race:str=None, alignment:str=None, class_:str=None, traits:list=None, archetype:str=None,
+                 name:str=None, description:str=None, dead_description:str=None, current_room:object=None, inventory:list=None, is_alive:bool=True,
+                 is_defeated:bool=False, is_hostile:bool=False, is_merchant:bool=False, is_ally:bool=False, is_quest_giver:bool=False, is_hidden:bool=False,
                  dialogue:dict=None, quests:dict=None, items:dict=None, stats:dict=None, modifiers:dict=None, unique_id:str=None, history:list=None):
         self.role = role
         self.sex = sex
         self.race = race
         self.alignment = alignment
         self.class_ = class_
+        self.traits = traits
+        self.archetype = archetype
         self.name = name
         self.description = description
         self.dead_description = dead_description

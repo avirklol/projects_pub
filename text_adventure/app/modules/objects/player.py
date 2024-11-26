@@ -32,8 +32,11 @@ class Player:
                 else:
                     click.echo(click.style("\nInvalid input. Try again:", fg="red"))
 
-        if self.current_room.enemy:
-            click.echo(click.style(f"\nENEMY: {self.current_room.enemy}", fg="red"))
+        if self.current_room.npc:
+            if self.current_room.npc.is_alive and not self.current_room.npc.is_hidden and not self.current_room.npc.is_hostile:
+                click.echo(click.style(f"\ALLY: {self.current_room.npc.name}", fg="green"))
+            if self.current_room.npc.is_alive and self.current_room.npc.is_hostile:
+                click.echo(click.style(f"\nENEMY: {self.current_room.npc.name}", fg="red"))
 
         if self.current_room.items:
             if len(self.current_room.items) >= 1:

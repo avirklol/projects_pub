@@ -42,15 +42,16 @@ rc_settings = {
             }
         }
         },
-    "ROOM + ENEMY": {
+    "ROOM + NPC": {
         "instructions":"""
-        If prompted 'ROOM + ENEMY' you will output the following:
+        If prompted 'ROOM + NPC' you will output the following:
             - a description of a room inside of {setting} with the following kind of enemy inside: {npc_race}
-            - consider the enemy's sex: {npc_sex}
-            - consider the enemy's alignment: {npc_alignment}
-            - consider the enemy's class: {npc_class}
-            - consider the enemy's description: {npc_description}
-            - the enemy must be incorporated into the room description
+            - consider the NPC's sex: {npc_sex}
+            - consider the NPC's alignment: {npc_alignment}
+            - consider the NPC's class: {npc_class}
+            - consider the NPC's description: {npc_description}
+            - consider the NPC's role: {npc_role} (very important)
+            - the NPC must be incorporated into the room description in a manner that fits the setting and their role
             - output the description of the dead enemy to npc_dead_description
             - output the description of the room to room_description
             - output the name of the room to room_name
@@ -62,11 +63,11 @@ rc_settings = {
                 "type": "string"
             },
             "room_description": {
-                "description": "A description of the room at around 140 characters, incorporating the description of an enemey present in the room if prompted 'ROOM + ENEMY'.",
+                "description": "A description of the room at around 140 characters, incorporating the description of an NPC present in the room if prompted 'ROOM + NPC'.",
                 "type": "string"
             },
             "npc_dead_description": {
-                "description": "A description of the dead enemy if prompted 'ROOM + ENEMY'.",
+                "description": "A description of the dead NPC if prompted 'ROOM + NPC'.",
                 "type": "string"
             },
         }
@@ -93,7 +94,7 @@ def room_constructor(prompt:str, setting:str, npc:object=None):
     ARGUMENTS:
         prompt (str): Either 'ROOM' or 'ROOM + ENEMY'.
         setting (str): The setting of the room; what kind of location it is.Passed from the settings dictionary in modeuls.ai.config.
-        enemy (str, optional): The enemy that should be present in the room. Defaults to None.
+        npc (str, optional): The enemy that should be present in the room. Defaults to None.
     """
 
     global rc_config
@@ -102,14 +103,14 @@ def room_constructor(prompt:str, setting:str, npc:object=None):
         "ROOM": {
             "setting": setting
         },
-        "ROOM + ENEMY": {
+        "ROOM + NPC": {
             "setting": setting,
             "npc_race": npc.race if npc else None,
             "npc_sex": npc.sex if npc else None,
             "npc_alignment": npc.alignment if npc else None,
             "npc_class": npc.class_ if npc else None,
             "npc_description": npc.description if npc else None,
-
+            "npc_role": npc.role if npc else None,
         },
     }
 
@@ -236,39 +237,39 @@ dm_settings = {
     "NPC": {
         "instructions":"""
         If prompted 'NPC' you will do the following:
-            - consider the NPC's sex: {npc_sex}
-            - consider the NPC's race: {npc_race}
-            - consider the NPC's alignment: {npc_alignment}
-            - consider the NPC's role: {npc_role}
-            - consider the NPC's class: {npc_class}
+            - consider the NPC's sex: {sex}
+            - consider the NPC's race: {race}
+            - consider the NPC's alignment: {alignment}
+            - consider the NPC's role: {role}
+            - consider the NPC's class: {class}
             - output a first name for the NPC to npc_name that fits their race unrelated to any existing characters in other lore
-            - output a ~180 CHARACTER description of the NPC to npc_description that fits the setting, incorporating their race, alignment, role and class in a more abstract manner; avoid repeating words, terms and explicitly mentioning their alignment and role
-            - output a single archetype for the NPC to npc_archetype that fits their class, role and alignment
-            - output an array of no more than 5 succinct traits for the NPC to npc_traits that fits their race, alignment, class and role
-            - output an array of no more than 5 dialogue examples for the NPC to npc_dialogue that fits the setting, alignment, race, and role
+            - output a ~180 CHARACTER description of the NPC to "description" that fits the setting, incorporating their race, alignment, role and class in a more abstract manner; avoid repeating words, terms and explicitly mentioning their alignment and role
+            - output a single archetype for the NPC to "archetype" that fits their class, role and alignment
+            - output an array of no more than 5 succinct traits for the NPC to "traits" that fits their race, alignment, class and role
+            - output an array of no more than 5 dialogue examples for the NPC to "dialogue" that fits the setting, alignment, race, and role
             - outputs must be unique and not resemble previous responses
         """,
         "outputs": {
-            "npc_name": {
+            "name": {
                 "description": "The name of the NPC if prompted 'NPC'.",
                 "type": "string"
             },
-            "npc_description": {
+            "description": {
                 "description": "The ~120 CHARACTER description of the NPC if prompted 'NPC'.",
                 "type": "string"
             },
-            "npc_archetype": {
+            "archetype": {
                 "description": "A single archetype for the NPC if prompted 'NPC'.",
                 "type": "string"
             },
-            "npc_traits": {
+            "traits": {
                 "description": "An array of no more than 5 succinct traits for the NPC if prompted 'NPC'.",
                 "type": "array",
                 "items": {
                     "type": "string"
                 }
             },
-            "npc_dialogue": {
+            "dialogue": {
                 "description": "An array of no more than 5 dialogue succinct examples for the NPC if prompted 'NPC'.",
                 "type": "array",
                 "items": {
@@ -336,11 +337,11 @@ def dm(dm_alignment:str, prompt:str, setting:str, description:str=None, directio
             'inventory': inventory
         },
         'NPC': {
-            'npc_sex': npc['sex'] if npc else None,
-            'npc_role': npc['role'] if npc else None,
-            'npc_race': npc['race'] if npc else None,
-            'npc_alignment': npc['alignment'] if npc else None,
-            'npc_class': npc['class'] if npc else None,
+            'sex': npc['sex'] if npc else None,
+            'role': npc['role'] if npc else None,
+            'race': npc['race'] if npc else None,
+            'alignment': npc['alignment'] if npc else None,
+            'class': npc['class_'] if npc else None,
         },
     }
 
