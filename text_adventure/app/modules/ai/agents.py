@@ -376,19 +376,38 @@ def dm(dm_alignment:str, prompt:str, setting:str, description:str=None, directio
 # --------------------------
 
 # --------------------------
-# NPC GENERATOR AGENT
+# NPC CONVERSATION AGENT
 # --------------------------
 
-npc_template = [
-    {
-        "role": "system",
-        "content": """
-        You are the NPC agent. You will do one of many things:
+npc_settings = {
+    "SYSTEM": """
+    You are the NPC CONVERSATION agent. You will do one of many things:
         1. You will always output JSON according to provided json_schema.
-        2. If prompted 'NPC' you will output a description of an NPC inside of {setting}.
-        """
+        2. {config}
+    """,
+    "PLAYER": {
+        "instructions":"""
+        If prompted 'CONVERSATION' you will do the following:
+            - consider the NPC's role: {role}
+            - consider the NPC's class: {class}
+            - consider the NPC's alignment: {alignment}
+            - consider the NPC's archetype: {archetype}
+            - consider the NPC's traits: {traits}
+            - consider the NPC's dialogue samples: {dialogue}
+            - consider the system and user messages that follow these intructions
+            - output a response to the player's input to "response"
+            - output must fit thematically with the dialogue samples
+            - if the player repeats themselves, respond with a response similar to the one you output previously in response to the same input
+            - if the player continues to repeat themselves, remind them that they're repeating themselves, then respond with a response similar to the one you output previously in response to the same input
+        """,
+        "outputs": {
+            "response": {
+                "description": "The response to the player's input.",
+                "type": "string"
+            }
+        }
     }
-]
+}
 
 npc_config = [
     {
