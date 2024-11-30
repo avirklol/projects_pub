@@ -7,7 +7,7 @@ class NPC:
     def __init__(self, role:str=None, sex:str=None, race:str=None, alignment:str=None, class_:str=None, traits:list=None, archetype:str=None,
                  name:str=None, description:str=None, dead_description:str=None, current_room:object=None, inventory:list=None, is_alive:bool=True,
                  is_defeated:bool=False, is_hostile:bool=False, is_merchant:bool=False, is_ally:bool=False, is_quest_giver:bool=False, is_hidden:bool=False,
-                 dialogue:dict=None, quests:dict=None, items:dict=None, stats:dict=None, modifiers:dict=None, unique_id:str=None, history:list=None):
+                 dialogue:dict=None, quests:dict=None, items:dict=None, stats:dict=None, modifiers:dict=None, unique_id:str=None, history:list=None, memory:list=None):
         self.role = role
         self.sex = sex
         self.race = race
@@ -33,6 +33,7 @@ class NPC:
         self.stats = stats if stats is not None else {}
         self.modifiers = modifiers if modifiers is not None else {}
         self.unique_id = unique_id
+        self.memory = memory if memory is not None else []
         self.history = history if history is not None else []
 
     def __str__(self):
